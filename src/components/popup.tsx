@@ -1,9 +1,8 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
+import React, { useEffect, useState } from "react";
+import Sign from "./sub/sign";
+import Connect from "./sub/connect";
 // import { initializeApp } from "firebase/app";
 // import { getFirestore } from "firebase/firestore/lite";
-
-import GoogleBtn from "./assets/image/google_btn.svg";
 
 const Popup: React.FC = () => {
   // firebase config 불러오기
@@ -22,27 +21,22 @@ const Popup: React.FC = () => {
   // const db = getFirestore(app);
   //const analytics = getAnalytics(app);
 
-  const google_login_click = () => {
-    // background.js로 로그인 요청
-    chrome.runtime.sendMessage(
-      { action: "loginWithGoogle" },
-      function (response) {
-        // 로그인 후 처리할 로직 (access_token 등)
-        console.log("Logged in successfully!", response);
+  const [IsAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  useEffect(() => {
+    chrome.storage.local.get(["isAuthenticated"], (result) => {
+      if (result.isAuthenticated) {
+        setIsAuthenticated(true);
       }
-    );
-  };
+    });
+  }, []);
 
   return (
     <div className="w-80 p-4">
       <h1 className="mb-2 text-xl font-bold">Cozy Video Talk</h1>
-      <button onClick={google_login_click} className="cursor-pointer">
-        <img src={GoogleBtn} />
-      </button>
+      {IsAuthenticated ? <Sign /> : <Connect />}
     </div>
   );
 };
 
-const container = document.getElementById("app");
-const root = createRoot(container!);
-root.render(<Popup />);
+export default Popup;
