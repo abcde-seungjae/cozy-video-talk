@@ -2,11 +2,11 @@ import GoogleBtn from "../../assets/image/google_btn.svg";
 
 interface SignResponse {
   success: boolean;
-  response?: ConnectProps;
+  response?: UserType;
   error?: unknown;
 }
 
-type ConnectProps = {
+export type UserType = {
   uid: string;
   nickname: string;
   inviteCode: string;
@@ -17,13 +17,18 @@ const Sign: React.FC = () => {
     // background.ts로 로그인 요청
     chrome.runtime.sendMessage(
       { action: "loginWithGoogle" },
-      (response: SignResponse) => {
+      (res: SignResponse) => {
         if (chrome.runtime.lastError) {
           console.error("Login runtime error:", chrome.runtime.lastError);
-        } else if (response.success) {
-          console.log("Logged in successfully!", response);
+        } else if (res.success) {
+          console.log("Logged in successfully!", res);
+
+          chrome.storage.session.set({
+            userInfo: res.response,
+            isAuthenticated: true,
+          });
         } else {
-          console.error("Login failed:", response.error);
+          console.error("Login failed:", res.error);
         }
       }
     );

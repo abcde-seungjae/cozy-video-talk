@@ -24,56 +24,45 @@ const db = getFirestore(app);
 
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === "loginWithGoogle") {
-    chrome.identity.getAuthToken(
-      {
-        interactive: true,
-      },
-      async (accessToken) => {
-        if (chrome.runtime.lastError) {
-          console.error("error: " + chrome.runtime.lastError);
-          sendResponse({ success: false, error: chrome.runtime.lastError });
-        } else {
-          // Firebase에 사용자 정보 저장
-          try {
-            if (accessToken) {
-              console.log("Access Token:", accessToken);
+    chrome.identity.getAuthToken({ interactive: true }, async (accessToken) => {
+      if (chrome.runtime.lastError) {
+        console.error("error: " + chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError });
+      } else {
+        // Firebase에 사용자 정보 저장
+        try {
+          if (accessToken) {
+            console.log("Access Token:", accessToken);
 
-              // Firebase Authentication을 사용하여 로그인
-              const credential = GoogleAuthProvider.credential(
-                null,
-                accessToken
-              );
-              const userCredential = await signInWithCredential(
-                auth,
-                credential
-              );
-              const user = userCredential.user;
+            // Firebase Authentication을 사용하여 로그인
+            const credential = GoogleAuthProvider.credential(null, accessToken);
+            const userCredential = await signInWithCredential(auth, credential);
+            const user = userCredential.user;
 
-              // 고유한 초대 코드 생성
-              const inviteCode = generateInviteCode(10);
+            // 고유한 초대 코드 생성
+            const inviteCode = generateInviteCode(10);
 
-              // Firebase에 사용자 정보 저장
-              const userDoc = doc(db, "users", user.uid);
+            // Firebase에 사용자 정보 저장
+            const userDoc = doc(db, "users", user.uid);
 
-              const connectInfo = {
-                uid: user.uid,
-                nickname: user.displayName,
-                inviteCode,
-              };
+            const userInfo = {
+              uid: user.uid,
+              nickname: user.displayName,
+              inviteCode,
+            };
 
-              // 사용자 존재시 업데이트, 없으면 새로 생성
-              await setDoc(userDoc, connectInfo);
+            // 사용자 존재시 업데이트, 없으면 새로 생성
+            await setDoc(userDoc, userInfo);
 
-              // 로그인 성공
-              sendResponse({ success: true, response: connectInfo });
-            }
-          } catch (error) {
-            console.error("Firebase error: " + error);
-            sendResponse({ success: false, error: error });
+            // 로그인 성공
+            sendResponse({ success: true, response: userInfo });
           }
+        } catch (error) {
+          console.error("Firebase error: " + error);
+          sendResponse({ success: false, error: error });
         }
       }
-    );
+    });
     return true;
   }
 });
@@ -88,3 +77,28 @@ const generateInviteCode = (length: number) => {
   }
   return result;
 };
+
+// Connect On/Off 상태 변경
+chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+  if (request.action === "connectChange") {
+    chrome.storage.session.get(["userInfo"], async (result) => {
+      if (result.userInfo) {
+        const userInfo = result.userInfo;
+        // Firebase에 사용자 정보 저장
+        const userDoc = doc(db, "connect", userInfo.uid);
+
+        const connectInfo = {
+          uid: userInfo.uid,
+          isConnected: request.isConnected,
+        };
+
+        // 사용자 존재시 업데이트, 없으면 새로 생성
+        await setDoc(userDoc, connectInfo);
+
+        // 로그인 성공
+        sendResponse({ success: true, response: connectInfo });
+      }
+    });
+  }
+  return true;
+});
