@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
+
+import { UserType } from "../sign";
+import { onConnectChange } from "../../lib/connect";
+
 import BtnOff from "../../assets/image/btn_off.png";
 import BtnOn from "../../assets/image/btn_on.png";
-import { useEffect, useState } from "react";
-import { UserType } from "./sign";
 
 const Connect: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -9,7 +12,6 @@ const Connect: React.FC = () => {
 
   useEffect(() => {
     chrome.storage.session.get(["isConnected", "userInfo"], (result) => {
-      console.error(result.isConnected);
       if (result.isConnected) {
         setIsConnected(true);
       }
@@ -20,25 +22,13 @@ const Connect: React.FC = () => {
     });
   }, []);
 
-  const onConnectChange = () => {
-    setIsConnected(!isConnected);
-    chrome.storage.session.set({ isConnected: !isConnected });
-
-    chrome.runtime.sendMessage(
-      {
-        action: "connectChange",
-        isConnected: !isConnected,
-      },
-      function (response) {
-        console.log("Connect changed successfully!", response);
-      }
-    );
-  };
-
   return (
     <div>
       <button
-        onClick={onConnectChange}
+        onClick={() => {
+          setIsConnected(!isConnected);
+          onConnectChange();
+        }}
         className="cursor-pointer flex justify-center w-full"
       >
         {isConnected ? <img src={BtnOn} /> : <img src={BtnOff} />}
@@ -48,7 +38,7 @@ const Connect: React.FC = () => {
           isConnected ? "bg-white" : "bg-gray-200"
         }`}
       >
-        <label className="w-32 text-center">초대코드 입력: </label>
+        <label className="w-32 text-center">초대코드 입력</label>
         <div className="flex ml-2 w-full border-b border-gray-500">
           <input className="min-h-6 w-full pl-2" disabled={!isConnected} />
           <button className="rounded bg-black text-white px-2 py-1 text-nowrap cursor-pointer">
@@ -61,8 +51,12 @@ const Connect: React.FC = () => {
           isConnected ? "bg-white" : "bg-gray-200"
         }`}
       >
-        <label className="w-32 text-center">초대코드: </label>
-        <p className="ml-2 ps-2 w-full border-b border-gray-500 min-h-6">
+        <label className="w-32 text-center">초대코드</label>
+        <p
+          className={`ml-2 pl-2 pb-1 w-full border-b border-gray-500 min-h-6 ${
+            isConnected ? "text-black select-auto" : "text-gray-500 select-none"
+          }`}
+        >
           {userInfo.inviteCode}
         </p>
       </div>

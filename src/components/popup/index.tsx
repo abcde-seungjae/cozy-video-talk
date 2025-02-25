@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import Sign from "./sub/sign";
-import Connect from "./sub/connect";
+import Sign from "../sign";
+import Connect from "../connect";
 
 const Popup: React.FC = () => {
   const [IsAuthenticated, setIsAuthenticated] = useState<boolean>(false);
