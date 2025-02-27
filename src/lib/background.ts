@@ -3,11 +3,12 @@ import {
   signInWithCredential,
 } from "firebase/auth/cordova";
 import { doc, setDoc } from "firebase/firestore/lite";
-import { firebase_auth, firebase_db } from "./firebase";
-import io from "socket.io-client";
+import { firebase_auth, firebase_db } from "./util/firebase";
+import { generateInviteCode } from "./util/function";
+import SocketManager from "./util/socketManager";
+import { startRTCConnection } from "./util/webRTC";
 
-// 전역 소켓 객체 생성
-const socket = io(import.meta.env.VITE_SIGNALING_SERVER_URL as string);
+const socket = SocketManager.getInstance();
 
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === "loginWithGoogle") {
@@ -27,16 +28,12 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
             );
             const user = userCredential.user;
 
-            // 고유한 초대 코드 생성
-            const inviteCode = generateInviteCode(10);
-
             // Firebase에 사용자 정보 저장
             const userDoc = doc(firebase_db, "users", user.uid);
 
             const userInfo = {
               uid: user.uid,
               nickname: user.displayName,
-              inviteCode,
             };
 
             // 사용자 존재시 업데이트, 없으면 새로 생성
@@ -55,17 +52,6 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   }
 });
 
-const generateInviteCode = (length: number) => {
-  const characters =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    result += characters[randomIndex];
-  }
-  return result;
-};
-
 // Connect On/Off 상태 변경
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === "connectChange") {
@@ -78,8 +64,7 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
         const connectInfo = {
           uid: userInfo.uid,
           isConnected: request.isConnected,
-          ip: request.ip,
-          port: request.port,
+          userSocketId: request.userSocketId,
         };
 
         // uid 존재시 업데이트, 없으면 새로 생성
@@ -93,69 +78,21 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   return true;
 });
 
-// 시그널링 서버 연결
-export const connectSignalServer = () => {
-  return new Promise<string>((resolve, reject) => {
-    // 시그널링 서버에 연결 후 소켓 ID 받기
-    socket.on("connect", () => {
-      const userSocketId = socket.id || "";
-      resolve(userSocketId); // 소켓 ID를 반환
-    });
+export const socketConnect = () => {
+  // 고유한 초대 코드 생성
+  const inviteCode = generateInviteCode(10);
 
-    // 연결 실패 시 reject 처리
-    socket.on("connect_error", (error) => {
-      reject("Socket Connection failed: " + error);
-    });
-  });
-};
+  socket.connect();
 
-// RTC 연결 시작
-export const startRTCConnection = (targetSocketId: string) => {
-  const peerConnection = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      {
-        urls: "turn:turn.xirsys.com:3478?transport=udp",
-        username: import.meta.env.VITE_XIRSYS_USERNAME as string,
-        credential: import.meta.env.VITE_XIRSYS_CREDENTIAL as string,
-      },
-      {
-        urls: "turn:turn.xirsys.com:3478?transport=tcp",
-        username: import.meta.env.VITE_XIRSYS_USERNAME as string,
-        credential: import.meta.env.VITE_XIRSYS_CREDENTIAL as string,
-      },
-    ],
+  socket.emit("register-code", { code: inviteCode }, (response: unknown) => {
+    console.log(response);
   });
 
-  // 상대방의 소켓 ID를 통해 Offer 전송
-  peerConnection
-    .createOffer()
-    .then((offer) => {
-      return peerConnection.setLocalDescription(offer);
-    })
-    .then(() => {
-      // 소켓을 통해 상대방에게 Offer 전송
-      socket.emit("offer", peerConnection.localDescription, targetSocketId);
-    });
+  socket.emit("join-with-code", { code: "123456" });
 
-  // ICE Candidate 처리
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("ice-candidate", event.candidate, targetSocketId);
-    }
-  };
+  socket.on("connect-to-peer", (data: unknown) => {
+    const { targetSocketId } = data as { targetSocketId: string };
 
-  peerConnection.ontrack = (event) => {
-    const remoteStream = event.streams[0];
-    // remoteStream을 통해 상대방 비디오 출력 처리
-  };
-
-  // 로컬 미디어 스트림 처리
-  navigator.mediaDevices
-    .getUserMedia({ video: true, audio: true })
-    .then((localStream) => {
-      localStream
-        .getTracks()
-        .forEach((track) => peerConnection.addTrack(track, localStream));
-    });
+    startRTCConnection(targetSocketId);
+  });
 };

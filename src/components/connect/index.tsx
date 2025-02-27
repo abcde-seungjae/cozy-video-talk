@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { UserType } from "../sign";
-import { onConnectChange } from "../../lib/connect";
+import { onConnectChange } from "../../lib/components/connect";
 
 import BtnOff from "../../assets/image/btn_off.png";
 import BtnOn from "../../assets/image/btn_on.png";
@@ -27,7 +27,7 @@ const Connect: React.FC = () => {
       <button
         onClick={() => {
           setIsConnected(!isConnected);
-          onConnectChange();
+          onConnectChange(); // Connect 상태 변경 및 Firebase에 저장
         }}
         className="cursor-pointer flex justify-center w-full"
       >
