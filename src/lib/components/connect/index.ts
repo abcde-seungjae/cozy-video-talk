@@ -1,7 +1,7 @@
 import { doc, setDoc } from "firebase/firestore";
-import { firebase_db } from "../../util/firebase";
 import { socketConnect } from "../../background";
 import SocketManager from "../../util/socketManager";
+import { firebaseDb } from "../../util/firebaseManager";
 
 const socket = SocketManager.getInstance();
 
@@ -16,7 +16,7 @@ export const onConnectChange = () => {
       chrome.storage.session.set({ isConnected: !isConnected });
 
       // Firebase에 연결결 정보 저장
-      const connectDoc = doc(firebase_db, "connect", userInfo.uid);
+      const connectDoc = doc(firebaseDb, "connect", userInfo.uid);
 
       const connectInfo = {
         action: "connectChange",

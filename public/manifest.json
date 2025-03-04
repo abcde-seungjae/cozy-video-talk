@@ -10,7 +10,8 @@
     "default_icon": "icons/icon-128.png"
   },
   "background": {
-    "service_worker": "assets/background.js"
+    "service_worker": "assets/background.js",
+    "type": "module"
   },
   "oauth2": {
     "client_id": "724347552280-04jf67iq0sj0mttrrno4vfu62i7kc15h.apps.googleusercontent.com",

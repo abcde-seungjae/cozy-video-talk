@@ -2,13 +2,11 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from "firebase/auth/cordova";
-import { doc, setDoc } from "firebase/firestore/lite";
-import { firebase_auth, firebase_db } from "./util/firebase";
 import { generateInviteCode } from "./util/function";
 import SocketManager from "./util/socketManager";
 import { startRTCConnection } from "./util/webRTC";
-
-const socket = SocketManager.getInstance();
+import { doc, setDoc } from "@firebase/firestore";
+import { firebaseAuth, firebaseDb } from "./util/firebaseManager";
 
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === "loginWithGoogle") {
@@ -23,18 +21,19 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
             // Firebase Authentication을 사용하여 로그인
             const credential = GoogleAuthProvider.credential(null, accessToken);
             const userCredential = await signInWithCredential(
-              firebase_auth,
+              firebaseAuth,
               credential
             );
             const user = userCredential.user;
 
             // Firebase에 사용자 정보 저장
-            const userDoc = doc(firebase_db, "users", user.uid);
+            const userDoc = doc(firebaseDb, "users", user.uid);
 
             const userInfo = {
-              uid: user.uid,
+              email: user.email,
               nickname: user.displayName,
             };
+            console.error(userInfo);
 
             // 사용자 존재시 업데이트, 없으면 새로 생성
             await setDoc(userDoc, userInfo);
@@ -59,7 +58,7 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
       if (result.userInfo) {
         const userInfo = result.userInfo;
         // Firebase에 연결 정보 저장
-        const connectDoc = doc(firebase_db, "connect", userInfo.uid);
+        const connectDoc = doc(firebaseDb, "connect", userInfo.uid);
 
         const connectInfo = {
           uid: userInfo.uid,
@@ -79,6 +78,7 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
 });
 
 export const socketConnect = () => {
+  const socket = SocketManager.getInstance();
   // 고유한 초대 코드 생성
   const inviteCode = generateInviteCode(10);
 
