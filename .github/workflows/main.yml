@@ -1,0 +1,32 @@
+name: Deploy Chrome Extension
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22  # Node.js 버전 설정
+
+      - name: Zip Extension
+        run: zip -r extension.zip . -x '*.git*' '*.github*'  # 확장 프로그램 파일 압축
+
+      - name: Upload to Chrome Web Store
+        uses: wdzeng/chrome-webstore-upload-action@v1
+        with:
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          file: extension.zip
+          publish: true
